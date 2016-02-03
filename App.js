@@ -20,29 +20,50 @@ Ext.define('CustomApp', {
             listeners: {
                 load: function(store,data,success) {
                     this._showRenderedGrid(store);
-                    this._prepareLineByLineGrid(data);
+                    // this._prepareLineByLineGrid(data);
                 },
                 scope: this
             }
         });
     },
     /* formats data for the revision history cell */
-    _revisionRenderer: function(value) {
-        var formatted_value_array = [];
-        if ( value.Revisions ) {
-            Ext.Array.each( value.Revisions, function(rev){
-                    formatted_value_array.push( rev.RevisionNumber + " on " + rev.CreationDate + " by " + rev.User._refObjectName );
+    _revisionRenderer: function(value,meta,record) {
+
+        var formatted_value_array = record.get("RevisionArray");
+        if (formatted_value_array) {
+            return formatted_value_array;
+        } else {
+            Rally.data.ModelFactory.getModel({
+                type: 'RevisionHistory',
+                scope: this,
+                success: function(model) {
+                    model.load(value,
+                    {
+                        fetch : true,
+                        callback : function(records,op,success) {
+                            records.getCollection('Revisions').load({
+                                fetch: true,
+                                callback: function(records, operation, success) {
+                                    record.set("RevisionArray", _.map(records,function(r){
+                                        return r.get("RevisionNumber") + " on " + r.get("CreationDate") + " by " + r.get("User")._refObjectName;
+                                    }).join("<br/>"));
+                                }
+                            });
+                        }
+                    });
+                }
             });
+            return "...";
         }
-        return formatted_value_array.join("<br/>");
     },
+
     _showRenderedGrid: function(store) {
         if ( this.render_grid ) { this.render_grid.destroy(); }
         this.render_grid = Ext.create('Rally.ui.grid.Grid',{
             store: store,
             columnCfgs: [
-                { text: 'ID', dataIndex: 'FormattedID' },
-                { text: 'Name', dataIndex: 'Name' },
+                { text: 'ID', dataIndex: 'FormattedID', width : 10 },
+                { text: 'Name', dataIndex: 'Name',width : 50 },
                 { text: 'Revs', dataIndex: 'RevisionHistory', renderer: this._revisionRenderer, flex: 1}
             ]
         });
@@ -57,8 +78,8 @@ Ext.define('CustomApp', {
                     FormattedID: item.get('FormattedID'),
                     Name: item.get('Name'),
                     RevisionNumber: rev.RevisionNumber,
-                    RevisionDate: rev.CreationDate,
-                    RevisionAuthor: rev.User._refObjectName
+                    RevisionDate: rev.CreationDate
+                    // RevisionAuthor: rev.User._refObjectName
                 };
                 lines.push(line);
             });
@@ -75,6 +96,7 @@ Ext.define('CustomApp', {
             }
         });
     },
+
     _showLineByLineGrid: function(store) {
         if ( this.line_grid ) { this.line_grid.destroy(); }
         this.line_grid = Ext.create('Rally.ui.grid.Grid',{
