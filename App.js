@@ -51,6 +51,7 @@ Ext.define('CustomApp', {
     /* formats data for the revision history cell */
     _revisionRenderer: function(value,meta,record) {
 
+        // console.log("_revisionRenderer");
         var formatted_value_array = record.get("RevisionArray");
         if (formatted_value_array) {
             return formatted_value_array;
@@ -67,7 +68,7 @@ Ext.define('CustomApp', {
                                 fetch: true,
                                 callback: function(records, operation, success) {
                                     record.set("RevisionArray", _.map(records,function(r){
-                                        return r.get("RevisionNumber") + " on " + r.get("CreationDate") + " by " + r.get("User")._refObjectName;
+                                        return r.get("RevisionNumber") + " on " + r.get("CreationDate") + " by " + r.get("User")._refObjectName + " : " + r.get("Description");
                                     }).join("<br/>"));
                                 }
                             });
@@ -80,6 +81,7 @@ Ext.define('CustomApp', {
     },
 
     _showRenderedGrid: function(store) {
+        
         if ( this.render_grid ) { this.render_grid.destroy(); }
         this.render_grid = Ext.create('Rally.ui.gridboard.GridBoard',{
             itemId : "rallygridboard",
@@ -99,8 +101,22 @@ Ext.define('CustomApp', {
                                     {
                                         text: 'Export...',
                                         handler: function() {
-                                            window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(
-                                                this.down('rallygridboard').getGridOrBoard());
+                                            // window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(
+                                                // this.down('rallygridboard').getGridOrBoard());
+                                            var grid = this.down('rallygridboard').getGridOrBoard();
+                                            // console.log("grid",grid);
+                                            var cols = grid.columns;
+                                            // console.log("nodes:",grid.store.tree.root.childNodes);
+
+                                            var csv = "Formatted ID,Name,Revisions" + "\n";
+                                            csv = csv + 
+                                                _.map(grid.store.tree.root.childNodes,function(node){
+                                                    var revs = node.get("RevisionArray") || "";
+                                                    revs = revs.replace(/,/g,"|").replace(/<br\/>/g,"\n,,");
+                                                    return [node.get("FormattedID"),node.get("Name"),revs].join(",")
+                                                }).join("\n");
+                                            // console.log("csv",csv);
+                                            window.location = 'data:text/csv;charset=utf8,' + encodeURIComponent(csv);
                                         },
                                         scope: this
                                     }
