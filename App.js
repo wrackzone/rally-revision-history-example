@@ -9,9 +9,10 @@ Ext.define('CustomApp', {
     ],
     launch: function() {
         // this._getSomeStories();
+        this.modelNames = 'hierarchicalrequirement';
 
         Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
-                models: ['User Story'],
+                models: [this.modelNames],
                 fetch: ['RevisionHistory','Revisions','FormattedID','Name','RevisionNumber','CreationDate','User'],
                 autoLoad: true,
                 enableHierarchy: true,
@@ -37,7 +38,7 @@ Ext.define('CustomApp', {
         if ( this.line_grid ) { this.line_grid.destroy(); }
         Ext.create('Rally.data.WsapiDataStore',{
             autoLoad: true,
-            model: 'User Story',
+            model: this.modelNames,
             fetch: ['RevisionHistory','Revisions','FormattedID','Name','RevisionNumber','CreationDate','User'],
             listeners: {
                 load: function(store,data,success) {
@@ -81,12 +82,14 @@ Ext.define('CustomApp', {
     },
 
     _showRenderedGrid: function(store) {
-        
+
         if ( this.render_grid ) { this.render_grid.destroy(); }
+        var context = this.getContext();
         this.render_grid = Ext.create('Rally.ui.gridboard.GridBoard',{
             itemId : "rallygridboard",
             height: this.getHeight(),
             width: this.getWidth(),
+            context : this.getContext(),
             gridConfig : {
             store: store,
             columnCfgs: [
@@ -95,37 +98,52 @@ Ext.define('CustomApp', {
                 { text: 'Revs', dataIndex: 'RevisionHistory', renderer: this._revisionRenderer, flex: 1}
             ]},
             plugins: [
-                            {
-                                ptype: 'rallygridboardactionsmenu',
-                                menuItems: [
-                                    {
-                                        text: 'Export...',
-                                        handler: function() {
-                                            // window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(
-                                                // this.down('rallygridboard').getGridOrBoard());
-                                            var grid = this.down('rallygridboard').getGridOrBoard();
-                                            // console.log("grid",grid);
-                                            var cols = grid.columns;
-                                            // console.log("nodes:",grid.store.tree.root.childNodes);
+             {
+                ptype: 'rallygridboardinlinefiltercontrol',
+                inlineFilterButtonConfig: {
+                    stateful: false,
+                    stateId: context.getScopedStateId('filters'),
+                    modelNames: [this.modelNames],
+                    inlineFilterPanelConfig: {
+                        quickFilterPanelConfig: {
+                            defaultFields: [
+                                'ArtifactSearch',
+                            ]
+                        }
+                    }
+                }
+            },
+                {
+                    ptype: 'rallygridboardactionsmenu',
+                    menuItems: [
+                        {
+                            text: 'Export...',
+                            handler: function() {
+                                // window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(
+                                    // this.down('rallygridboard').getGridOrBoard());
+                                var grid = this.down('rallygridboard').getGridOrBoard();
+                                // console.log("grid",grid);
+                                var cols = grid.columns;
+                                // console.log("nodes:",grid.store.tree.root.childNodes);
 
-                                            var csv = "Formatted ID,Name,Revisions" + "\n";
-                                            csv = csv + 
-                                                _.map(grid.store.tree.root.childNodes,function(node){
-                                                    var revs = node.get("RevisionArray") || "";
-                                                    revs = revs.replace(/,/g,"|").replace(/<br\/>/g,"\n,,");
-                                                    return [node.get("FormattedID"),node.get("Name"),revs].join(",")
-                                                }).join("\n");
-                                            // console.log("csv",csv);
-                                            window.location = 'data:text/csv;charset=utf8,' + encodeURIComponent(csv);
-                                        },
-                                        scope: this
-                                    }
-                                ],
-                                buttonConfig: {
-                                    iconCls: 'icon-export'
-                                }
-                            }
-                        ]
+                                var csv = "Formatted ID,Name,Revisions" + "\n";
+                                csv = csv + 
+                                    _.map(grid.store.tree.root.childNodes,function(node){
+                                        var revs = node.get("RevisionArray") || "";
+                                        revs = revs.replace(/,/g,"|").replace(/<br\/>/g,"\n,,");
+                                        return [node.get("FormattedID"),node.get("Name"),revs].join(",")
+                                    }).join("\n");
+                                // console.log("csv",csv);
+                                window.location = 'data:text/csv;charset=utf8,' + encodeURIComponent(csv);
+                            },
+                            scope: this
+                        }
+                    ],
+                    buttonConfig: {
+                        iconCls: 'icon-export'
+                    }
+                }
+            ]
         });
         this.down('#render_example').add(this.render_grid);
     },
