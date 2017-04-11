@@ -8,8 +8,30 @@ Ext.define('CustomApp', {
         {xtype: 'container',itemId:'line_by_line_example', flex: 1}
     ],
     launch: function() {
-        this._getSomeStories();
+        // this._getSomeStories();
+
+        Ext.create('Rally.data.wsapi.TreeStoreBuilder').build({
+                models: ['User Story'],
+                fetch: ['RevisionHistory','Revisions','FormattedID','Name','RevisionNumber','CreationDate','User'],
+                autoLoad: true,
+                enableHierarchy: true,
+                listeners: {
+                // load: function(store,data,success) {
+                //     this._showRenderedGrid;
+                //     // this._prepareLineByLineGrid(data);
+                // },
+                scope: this
+            }
+            }).then({
+                success: this._showRenderedGrid, //this._onStoreBuilt,
+                scope: this
+            });
+
+    
     },
+
+    
+
     _getSomeStories: function() {
         if ( this.render_grid ) { this.render_grid.destroy(); }
         if ( this.line_grid ) { this.line_grid.destroy(); }
@@ -59,13 +81,35 @@ Ext.define('CustomApp', {
 
     _showRenderedGrid: function(store) {
         if ( this.render_grid ) { this.render_grid.destroy(); }
-        this.render_grid = Ext.create('Rally.ui.grid.Grid',{
+        this.render_grid = Ext.create('Rally.ui.gridboard.GridBoard',{
+            itemId : "rallygridboard",
+            height: this.getHeight(),
+            width: this.getWidth(),
+            gridConfig : {
             store: store,
             columnCfgs: [
                 { text: 'ID', dataIndex: 'FormattedID', width : 10 },
                 { text: 'Name', dataIndex: 'Name',width : 50 },
                 { text: 'Revs', dataIndex: 'RevisionHistory', renderer: this._revisionRenderer, flex: 1}
-            ]
+            ]},
+            plugins: [
+                            {
+                                ptype: 'rallygridboardactionsmenu',
+                                menuItems: [
+                                    {
+                                        text: 'Export...',
+                                        handler: function() {
+                                            window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(
+                                                this.down('rallygridboard').getGridOrBoard());
+                                        },
+                                        scope: this
+                                    }
+                                ],
+                                buttonConfig: {
+                                    iconCls: 'icon-export'
+                                }
+                            }
+                        ]
         });
         this.down('#render_example').add(this.render_grid);
     },
